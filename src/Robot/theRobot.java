@@ -33,7 +33,7 @@ class mySmartMap extends JComponent implements KeyListener {
     int gameStatus;
 
     double[][] probs;
-    double[][] vals;
+    double[][] vals; //pretty sure this is our map
     
     public mySmartMap(int w, int h, World wld) {
         mundo = wld;
@@ -411,11 +411,20 @@ public class theRobot extends JFrame {
 //            endfor
 //        return Bel(Xt)
         double[][] new_belief = new double[previous_belief.length][previous_belief[0].length];
-        for(double[] x : previous_belief)
+        for(int x=0;x<previous_belief.length;x++)
         {
-            for(double y : x)
+            for(int y=0;y>previous_belief[x].length; y++)
             {
+                double belief_bar = 0.0;
+                for (int i=0;i<previous_belief.length;i++)
+                {
+                    for (int j=0;j<previous_belief[i].length;j++)
+                    {
+                        belief_bar +=  previous_belief[i][j]// multiplied by p(state| action, previous_state)
 
+                    }
+                }
+                double belief = 0.0; //normalized(p(reading | state) * belief_bar
             }
         }
         return new_belief;
@@ -476,6 +485,7 @@ public class theRobot extends JFrame {
                     }
                 }
                 else {
+                    //run the bayes fileter here?
                     // here, you'll want to update the position probabilities
                     // since you know that the result of the move as that the robot
                     // was not at the goal or in a stairwell
