@@ -402,7 +402,26 @@ public class theRobot extends JFrame {
         
         myMaps.updateProbs(probs);
     }
-      // TODO: update the probabilities of where the AI thinks it is based on the action selected and the new sonar readings
+
+    double[][] Discrete_Bayes_Filter(double[][] previous_belief, int action, String reading)
+    {
+//        for all xt in Xt do
+//        Bel’(xt) = Σxt-1 p(xt | at, xt-1) Bel(xt-1)
+//        Bel(xt) = η p(zt | xt) Bel’(xt)
+//            endfor
+//        return Bel(Xt)
+        double[][] new_belief = new double[previous_belief.length][previous_belief[0].length];
+        for(double[] x : previous_belief)
+        {
+            for(double y : x)
+            {
+
+            }
+        }
+        return new_belief;
+
+    }
+    // TODO: update the probabilities of where the AI thinks it is based on the action selected and the new sonar readings
     //       To do this, you should update the 2D-array "probs"
     // Note: sonars is a bit string with four characters, specifying the sonar reading in the direction of North, South, East, and West
     //       For example, the sonar string 1001, specifies that the sonars found a wall in the North and West directions, but not in the South and East directions
