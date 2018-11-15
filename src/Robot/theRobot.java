@@ -417,24 +417,26 @@ public class theRobot extends JFrame {
             for(int y=1;y<previous_belief[x].length-1; y++)
             {
                 double belief_bar = 0.0;
-                belief_bar += previous_belief[x][y]*(action == STAY ? moveProb: (1-moveProb)/4);//*p(state| action, previous_state
-                if(mundo.grid[x-1][y] == 0)
+                if(mundo.grid[x][y] == 0)
                 {
-                    belief_bar += previous_belief[x-1][y]*(action == WEST ? moveProb: (1-moveProb)/4);
+                    belief_bar += previous_belief[x][y]*(action == STAY ? moveProb: (1-moveProb)/4);//*p(state| action, previous_state
+                    if(mundo.grid[x+1][y] == 0)
+                    {
+                        belief_bar += previous_belief[x+1][y]*(action == WEST ? moveProb: (1-moveProb)/4);
+                    }
+                    if(mundo.grid[x-1][y] == 0)
+                    {
+                        belief_bar += previous_belief[x-1][y]*(action == EAST ? moveProb: (1-moveProb)/4);
+                    }
+                    if(mundo.grid[x][y+1] == 0)
+                    {
+                        belief_bar += previous_belief[x][y+1]*(action == NORTH ? moveProb: (1-moveProb)/4);
+                    }
+                    if(mundo.grid[x][y-1] == 0)
+                    {
+                        belief_bar += previous_belief[x][y-1]*(action == SOUTH ? moveProb: (1-moveProb)/4);
+                    }
                 }
-                if(mundo.grid[x+1][y] == 0)
-                {
-                    belief_bar += previous_belief[x+1][y]*(action == EAST ? moveProb: (1-moveProb)/4);
-                }
-                if(mundo.grid[x][y-1] == 0)
-                {
-                    belief_bar += previous_belief[x][y-1]*(action == NORTH ? moveProb: (1-moveProb)/4);
-                }
-                if(mundo.grid[x][y+1] == 0)
-                {
-                    belief_bar += previous_belief[x][y+1]*(action == SOUTH ? moveProb: (1-moveProb)/4);
-                }
-
                 if(is_expected(x,y,reading))
                 {
                     new_belief[x][y] = belief_bar*sensorAccuracy;
@@ -442,24 +444,34 @@ public class theRobot extends JFrame {
                 else {
                     new_belief[x][y] = belief_bar*(1-sensorAccuracy);//*Vs[3][3]; //*normalized(p(reading | state)
                 }
+
+//                double accuracy = (mundo.grid[x][y+1] == Character.getNumericValue(reading.charAt(0)) ? sensorAccuracy : (1-sensorAccuracy)) *
+//                        (mundo.grid[x][y-1] == Character.getNumericValue(reading.charAt(1)) ? sensorAccuracy : (1 - sensorAccuracy)) *
+//                        (mundo.grid[x-1][y] == Character.getNumericValue(reading.charAt(2)) ? sensorAccuracy : (1 - sensorAccuracy)) *
+//                        (mundo.grid[x+1][y] == Character.getNumericValue(reading.charAt(3)) ? sensorAccuracy : (1 - sensorAccuracy));
                 normalizing_factor += new_belief[x][y];
             }
         }
+
         for(int x=0;x<previous_belief.length;x++)
         {
-            for(int y=0;y>previous_belief[x].length; y++)
+            for(int y=0;y<previous_belief[x].length; y++)
             {
+
                 new_belief[x][y] = new_belief[x][y]/normalizing_factor;
             }
-        }                return new_belief;
+        }
+        return new_belief;
 
     }
 
 
     boolean is_expected(int x, int y, String sonar)
     {
-        return mundo.grid[x][y-1] == Character.getNumericValue(sonar.charAt(0)) && mundo.grid[x][y+1] == sonar.charAt(1)
-                && mundo.grid[x-1][y] == sonar.charAt(2) && mundo.grid[x+1][y] == sonar.charAt(3);
+        return  mundo.grid[x][y-1] == Character.getNumericValue(sonar.charAt(0)) &&
+                mundo.grid[x][y+1] == Character.getNumericValue(sonar.charAt(1)) &&
+                mundo.grid[x+1][y] == Character.getNumericValue(sonar.charAt(2)) &&
+                mundo.grid[x-1][y] == Character.getNumericValue(sonar.charAt(3));
     }
 
     // TODO: update the probabilities of where the AI thinks it is based on the action selected and the new sonar readings
@@ -469,14 +481,15 @@ public class theRobot extends JFrame {
     void updateProbabilities(int action, String sonars) {
         // your code
         double[][] temp = Discrete_Bayes_Filter(probs, action, sonars);
-        for(int x=0;x<temp.length;x++)
+        double total = 0.0;
+        for(int x=1;x<temp.length;x++)
         {
-            for(int y=0;y>temp[x].length; y++)
-            {
+            for(int y=1;y<temp[x].length; y++) {
                 probs[x][y] = temp[x][y];
             }
         }
-                myMaps.updateProbs(probs); // call this function after updating your probabilities so that the
+        System.out.println(total);
+        myMaps.updateProbs(probs); // call this function after updating your probabilities so that the
                                    //  new probabilities will show up in the probability map on the GUI
     }
 
@@ -529,7 +542,6 @@ public class theRobot extends JFrame {
                 }
                 else {
                     updateProbabilities(action, sonars); // TODO: this function should update the probabilities of where the AI thinks it is
-                    //run the bayes fileter here?
                     // here, you'll want to update the position probabilities
                     // since you know that the result of the move as that the robot
                     // was not at the goal or in a stairwell

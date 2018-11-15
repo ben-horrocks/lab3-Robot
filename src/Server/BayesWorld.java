@@ -279,7 +279,8 @@ public class BayesWorld extends JFrame {
                 action = Integer.parseInt(sin.readLine());
                 System.out.println("Move the robot: " + action);
                 moveRobot(action);
-                
+                System.out.println("X: " + xpos);
+                System.out.println("Y: " + ypos);
                 String sonars = getSonarReadings();
                 System.out.println(sonars);
                 if (mundo.grid[xpos][ypos] == 3) {
