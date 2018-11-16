@@ -437,18 +437,19 @@ public class theRobot extends JFrame {
                         belief_bar += previous_belief[x][y-1]*(action == SOUTH ? moveProb: (1-moveProb)/4);
                     }
                 }
-                if(is_expected(x,y,reading))
-                {
-                    new_belief[x][y] = belief_bar*sensorAccuracy;
-                }
-                else {
-                    new_belief[x][y] = belief_bar*(1-sensorAccuracy);//*Vs[3][3]; //*normalized(p(reading | state)
-                }
+//                if(is_expected(x,y,reading))
+//                {
+//                    new_belief[x][y] = belief_bar*sensorAccuracy;
+//                }
+//                else {
+//                    new_belief[x][y] = belief_bar*(1-sensorAccuracy);//*Vs[3][3]; //*normalized(p(reading | state)
+//                }
 
-//                double accuracy = (mundo.grid[x][y+1] == Character.getNumericValue(reading.charAt(0)) ? sensorAccuracy : (1-sensorAccuracy)) *
-//                        (mundo.grid[x][y-1] == Character.getNumericValue(reading.charAt(1)) ? sensorAccuracy : (1 - sensorAccuracy)) *
-//                        (mundo.grid[x-1][y] == Character.getNumericValue(reading.charAt(2)) ? sensorAccuracy : (1 - sensorAccuracy)) *
-//                        (mundo.grid[x+1][y] == Character.getNumericValue(reading.charAt(3)) ? sensorAccuracy : (1 - sensorAccuracy));
+                double accuracy = (mundo.grid[x][y-1] == Character.getNumericValue(reading.charAt(0)) ? sensorAccuracy : (1-sensorAccuracy)) *
+                        (mundo.grid[x][y+1] == Character.getNumericValue(reading.charAt(1)) ? sensorAccuracy : (1 - sensorAccuracy)) *
+                        (mundo.grid[x+1][y] == Character.getNumericValue(reading.charAt(2)) ? sensorAccuracy : (1 - sensorAccuracy)) *
+                        (mundo.grid[x-1][y] == Character.getNumericValue(reading.charAt(3)) ? sensorAccuracy : (1 - sensorAccuracy));
+                new_belief[x][y] = belief_bar*accuracy;
                 normalizing_factor += new_belief[x][y];
             }
         }
