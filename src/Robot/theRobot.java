@@ -364,6 +364,32 @@ public class theRobot extends JFrame {
         
         return a;
     }
+
+    void initialize_values() {
+        final int blank_space = 0;
+        final int wall = 1;
+        final int lose = 2;
+        final int win = 3;
+        for(int x = 0; x < mundo.width; x++)
+        {
+            for(int y = 0; y < mundo.height; y++)
+            {
+                switch(mundo.grid[x][y])
+                {
+                    case blank_space:
+                    case wall:
+                        Vs[x][y] = 0;
+                        break;
+                    case lose:
+                        Vs[x][y] = -10;
+                        break;
+                    case win:
+                        Vs[x][y] = 10;
+                        break;
+                }
+            }
+        }
+    }
     
     // initializes the probabilities of where the AI is
     void initializeProbabilities() {
@@ -437,13 +463,6 @@ public class theRobot extends JFrame {
                         belief_bar += previous_belief[x][y-1]*(action == SOUTH ? moveProb: (1-moveProb)/4);
                     }
                 }
-//                if(is_expected(x,y,reading))
-//                {
-//                    new_belief[x][y] = belief_bar*sensorAccuracy;
-//                }
-//                else {
-//                    new_belief[x][y] = belief_bar*(1-sensorAccuracy);//*Vs[3][3]; //*normalized(p(reading | state)
-//                }
 
                 double accuracy = (mundo.grid[x][y-1] == Character.getNumericValue(reading.charAt(0)) ? sensorAccuracy : (1-sensorAccuracy)) *
                         (mundo.grid[x][y+1] == Character.getNumericValue(reading.charAt(1)) ? sensorAccuracy : (1 - sensorAccuracy)) *
