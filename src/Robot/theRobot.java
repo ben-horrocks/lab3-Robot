@@ -500,20 +500,27 @@ public class theRobot extends JFrame {
     // You do NOT need to write this function for this lab; it can remain as is
     int automaticAction() {
 
-        ValIter();
+        ValIter(); //sets up value map for positions
         if(knownPosition)
         {
-            return moveOptimalKnown();
+            return moveOptimalKnown(); //just follows value map since I know where I am.
         }
         else
         {
-            return moveOptimalUnknown();
+            return moveOptimalUnknown(); //calcuates utility for each move according to my belief in my position and
+                                            //the value map, returning the highest.
         }
     }
 
     void ValIter()
     {
         //create value iteration for the given map
+        //for all states
+        //  U_t+1(s) = R(s)+ ()[max_a=A(s)sum of s' in S{P(s'|s,a)U_t(s')}]
+        //repeat for loop till no changes greater than threshold X
+
+        //Policy_t(s) = arg max a in A sum of s in S{P(s'|s,a)U(s')}
+
     }
 
     int moveOptimalKnown()
