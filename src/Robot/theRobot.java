@@ -499,10 +499,36 @@ public class theRobot extends JFrame {
     // This is the function you'd need to write to make the robot move using your AI;
     // You do NOT need to write this function for this lab; it can remain as is
     int automaticAction() {
-        
-        return STAY;  // default action for now
+
+        ValIter();
+        if(knownPosition)
+        {
+            return moveOptimalKnown();
+        }
+        else
+        {
+            return moveOptimalUnknown();
+        }
     }
-    
+
+    void ValIter()
+    {
+        //create value iteration for the given map
+    }
+
+    int moveOptimalKnown()
+    {
+        //move in direction you're supposed to if your at this spot
+        return STAY;
+    }
+
+    int moveOptimalUnknown()
+    {
+        //V(a) = SUM_xt(Bel(x_t) * Q(x_t, a))
+        //maximize V(a)
+        return STAY;
+    }
+
     void doStuff() {
         int action;
         
