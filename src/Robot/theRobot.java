@@ -8,9 +8,13 @@ import java.lang.*;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 import java.util.Scanner;
 import java.net.*;
+
+import static java.lang.Math.abs;
 
 
 // This class draws the probability map and value iteration map that you create to the window
@@ -512,8 +516,52 @@ public class theRobot extends JFrame {
         }
     }
 
+    double computeProbValSum(int x, int y, double penalty, int action)
+    {
+        //compute e
+        double E = 1; //E is initial value;
+        double sum = 0;
+        for(int x2 = 0; x2 < mundo.grid.length-1; x2++)
+        {
+            for(int y2 = 0; y2 < mundo.grid.length-1; y2++)
+            {
+                //zero with P(s'|s,a)
+                sum = 0*Vs[x2][y2];
+            }
+        }
+
+        return E + penalty*sum;
+    }
+
     void ValIter()
     {
+        double penalty = .1;
+        double iteration_delta = 0;
+        do {
+            for (int x = 1; x < mundo.grid.length - 1; x++) {
+                for (int y = 1; y < mundo.grid.length - 1; y++) {
+                    //NORTH
+                    double curr;
+                    double bestsofar = computeProbValSum(x, y, penalty, NORTH);
+                    //SOUTH
+                    curr = computeProbValSum(x, y, penalty, SOUTH);
+                    if (bestsofar < curr)
+                        bestsofar = curr;
+                    //EAST
+                    curr = computeProbValSum(x, y, penalty, EAST);
+                    if (bestsofar < curr)
+                        bestsofar = curr;
+                    //WEST
+                    curr = computeProbValSum(x, y, penalty, WEST);
+                    if (bestsofar < curr)
+                        bestsofar = curr;
+                    if (iteration_delta < abs(bestsofar = Vs[x][y])) {
+                        iteration_delta = abs(bestsofar = Vs[x][y]);
+                    }
+                    Vs[x][y] = bestsofar;
+                }
+            }
+        }while(iteration_delta > .1);
         //create value iteration for the given map
         //for all states
         //  U_t+1(s) = R(s)+ ()[max_a=A(s)sum of s' in S{P(s'|s,a)U_t(s')}]
