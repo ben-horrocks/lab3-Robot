@@ -206,18 +206,18 @@ public class BayesWorld extends JFrame {
         }
     }
     
-    // returns a strong with a char specifying north south east west; 1 = wall; 0 = no wall
+    // returns a strong with a char specifying north south east west; 1 = WALL; 0 = no WALL
     String getSonarReadings() {
         double value = rand.nextInt(1001) / 1001.0;
         String reading = "";
         // north
-        if (mundo.grid[xpos][ypos-1] == 1) { // it is a wall
+        if (mundo.grid[xpos][ypos-1] == 1) { // it is a WALL
             if (value <= sensorAccuracy)
                 reading += "1";
             else
                 reading += "0";
         }
-        else { // it is not a wall
+        else { // it is not a WALL
             if (value <= sensorAccuracy)
                 reading += "0";
             else
@@ -225,13 +225,13 @@ public class BayesWorld extends JFrame {
         }
         // south
         value = rand.nextInt(1001) / 1001.0;
-        if (mundo.grid[xpos][ypos+1] == 1) { // it is a wall
+        if (mundo.grid[xpos][ypos+1] == 1) { // it is a WALL
             if (value <= sensorAccuracy)
                 reading += "1";
             else
                 reading += "0";
         }
-        else { // it is not a wall
+        else { // it is not a WALL
             if (value <= sensorAccuracy)
                 reading += "0";
             else
@@ -239,13 +239,13 @@ public class BayesWorld extends JFrame {
         }
         // east
         value = rand.nextInt(1001) / 1001.0;
-        if (mundo.grid[xpos+1][ypos] == 1) { // it is a wall
+        if (mundo.grid[xpos+1][ypos] == 1) { // it is a WALL
             if (value <= sensorAccuracy)
                 reading += "1";
             else
                 reading += "0";
         }
-        else { // it is not a wall
+        else { // it is not a WALL
             if (value <= sensorAccuracy)
                 reading += "0";
             else
@@ -253,13 +253,13 @@ public class BayesWorld extends JFrame {
         }
         // west
         value = rand.nextInt(1001) / 1001.0;
-        if (mundo.grid[xpos-1][ypos] == 1) { // it is a wall
+        if (mundo.grid[xpos-1][ypos] == 1) { // it is a WALL
             if (value <= sensorAccuracy)
                 reading += "1";
             else
                 reading += "0";
         }
-        else { // it is not a wall
+        else { // it is not a WALL
             if (value <= sensorAccuracy)
                 reading += "0";
             else
@@ -285,13 +285,13 @@ public class BayesWorld extends JFrame {
                 System.out.println(sonars);
                 if (mundo.grid[xpos][ypos] == 3) {
                     System.out.println("Winner");
-                    //sout.println("win");
+                    //sout.println("WIN");
                     sonars += "winner";
                     theEnd = true;
                 }
                 else if (mundo.grid[xpos][ypos] == 2) {
                     System.out.println("Loser");
-                    //sout.println("lose");
+                    //sout.println("LOSE");
                     sonars += "loser";
                     theEnd = true;
                 }

@@ -1,8 +1,6 @@
 package Robot;
-import javax.swing.*;
 import java.awt.event.*;
 import java.awt.Color;
-import java.awt.Font;
 import java.awt.Graphics;
 import java.lang.*;
 import javax.swing.JComponent;
@@ -241,12 +239,31 @@ class mySmartMap extends JComponent implements KeyListener {
 
 // This is the main class that you will add to in order to complete the lab
 public class theRobot extends JFrame {
+
+    class ValueItem {
+        int direction;
+        double value;
+        public ValueItem(int direction, double value) {
+            this.direction = direction;
+            this.value = value;
+        }
+        public ValueItem() {
+            this.direction = NORTH;
+            this.value = 0.0;
+        }
+    }
+
     // Mapping of actions to integers
     public static final int NORTH = 0;
     public static final int SOUTH = 1;
     public static final int EAST = 2;
     public static final int WEST = 3;
     public static final int STAY = 4;
+
+    public static final int BLANK_SPACE = 0;
+    public static final int WALL = 1;
+    public static final int LOSE = 2;
+    public static final int WIN = 3;
 
     Color bkgroundColor = new Color(230,230,230);
     
@@ -275,7 +292,7 @@ public class theRobot extends JFrame {
     double[][] Vs;
 
     //store val iteration of being in each state
-    double[][] valIter;
+    ValueItem[][] valIter;
     
     public theRobot(String _manual, int _decisionDelay) {
         // initialize variables as specified from the command-line
@@ -370,36 +387,32 @@ public class theRobot extends JFrame {
     }
 
     void initialize_values() {
-        final int blank_space = 0;
-        final int wall = 1;
-        final int lose = 2;
-        final int win = 3;
         for(int x = 0; x < mundo.width; x++)
         {
             for(int y = 0; y < mundo.height; y++)
             {
                 switch(mundo.grid[x][y])
                 {
-                    case blank_space:
-                    case wall:
+                    case BLANK_SPACE:
+                    case WALL:
                         Vs[x][y] = 0;
                         break;
-                    case lose:
+                    case LOSE:
                         Vs[x][y] = -10;
                         break;
-                    case win:
+                    case WIN:
                         Vs[x][y] = 10;
                         break;
                 }
             }
         }
     }
-    
+
     // initializes the probabilities of where the AI is
     void initializeProbabilities() {
         probs = new double[mundo.width][mundo.height];
         Vs = new double[mundo.width][mundo.height];
-        valIter = new double[mundo.width][mundo.height];
+        valIter = new ValueItem[mundo.width][mundo.height];
         // if the robot's initial position is known, reflect that in the probability map
         initialize_values();
         if (knownPosition) {
@@ -503,7 +516,7 @@ public class theRobot extends JFrame {
     // TODO: update the probabilities of where the AI thinks it is based on the action selected and the new sonar readings
     //       To do this, you should update the 2D-array "probs"
     // Note: sonars is a bit string with four characters, specifying the sonar reading in the direction of North, South, East, and West
-    //       For example, the sonar string 1001, specifies that the sonars found a wall in the North and West directions, but not in the South and East directions
+    //       For example, the sonar string 1001, specifies that the sonars found a WALL in the North and West directions, but not in the South and East directions
     void updateProbabilities(int action, String sonars) {
         // your code
         double[][] temp = Discrete_Bayes_Filter(probs, action, sonars);
@@ -538,98 +551,137 @@ public class theRobot extends JFrame {
 
     double computeProbValSum(int x, int y, double penalty, int action)
     {
-        double sum = 0;
-        for(int x2 = 1; x2 < mundo.grid.length-1; x2++)
-        {
-            for(int y2 = 1; y2 < mundo.grid.length-1; y2++)
-            {
-                //check if i'm in a wall, if so ignore
-                if( mundo.grid[x2][y2] != 1) {
-                    //these if statements calcuate P(s'|s,a) similarly to the last lab. I need to double check if the
-                    //directions are correct though...
-                    double prob = 1 - moveProb;
-                    if (x == x2 && y == y2) {
-                        if (action == STAY)
-                            prob = moveProb;
-                        else
-                            prob = moveProb;
-                    }
-                    else if (x == x2 && y - 1 == y2) {
-                        if (action == SOUTH)
-                            prob = moveProb;
-                        else
-                            prob = prob / 4;
-                    }
-                    else if (x == x2 && y + 1 == y2) {
-                        if (action == NORTH)
-                            prob = moveProb;
-                        else
-                            prob = prob / 4;
-                    }
-                    else if (x - 1 == x2 && y == y2) {
-                        if (action == WEST)
-                            prob = moveProb;
-                        else
-                            prob = moveProb / 4;
-                    }
-                    else if (x + 1 == x2 && y == y2) {
-                        if (action == EAST)
-                            prob = moveProb;
-                        else
-                            prob = prob / 4;
-                    }
-                    else
-                        prob = 0;
-
-                    // reward function is reward from moving from [x][y] tp [x2][y2] based off of reward matrix Vs
-                    // the first pass through the do-while loop should essentially map Vs to valIter with the only
-                    // modification being the factoring in of the prob that we will actually end up in that state
-                    // if we had perfect move accuracy, prob would always be 0 or 1. and would only be 1 exactly once for
-                    // each summation. I think there must be a way to cut down this complexity though because as it is
-                    // it's REALLLY slow. Just a thought
-                   sum += prob * (Vs[x2][y2] + penalty * valIter[x2][y2]);
-                }
-            }
+        //CURERNTLY, THIS DOESN'T ACCOUNT FOR WALLS.
+        double probability_sum_total = 0.0;
+        double move_wrong_probability = (1 - moveProb)/4;
+        if(action == STAY) {
+            probability_sum_total += (moveProb * valIter[x][y].value);
+        } else {
+            probability_sum_total += (move_wrong_probability * valIter[x][y].value);
         }
-
-        return sum;
+        if(action == NORTH) {
+            probability_sum_total += (moveProb * valIter[x][y-1].value);
+        } else {
+            probability_sum_total += (move_wrong_probability * valIter[x][y-1].value);
+        }
+        if(action == EAST) {
+            probability_sum_total += (moveProb * valIter[x+1][y].value);
+        } else {
+            probability_sum_total += (move_wrong_probability * valIter[x+1][y].value);
+        }
+        if(action == SOUTH) {
+            probability_sum_total += (moveProb * valIter[x][y+1].value);
+        } else {
+            probability_sum_total += (move_wrong_probability * valIter[x][y+1].value);
+        }
+        if(action == WEST) {
+            probability_sum_total += (moveProb * valIter[x-1][y].value);
+        } else {
+            probability_sum_total += (move_wrong_probability * valIter[x-1][y].value);
+        }
+        return Vs[x][y] + (penalty * probability_sum_total);
+//        double sum = 0;
+//        //these if statements calcuate P(s'|s,a) similarly to the last lab. I need to double check if the
+//        //directions are correct though...
+//        double prob = 1 - moveProb;
+//        if (x == x2 && y == y2) {
+//            if (action == STAY)
+//                prob = moveProb;
+//            else
+//                prob = moveProb;
+//        }
+//        else if (x == x2 && y - 1 == y2) {
+//            if (action == SOUTH)
+//                prob = moveProb;
+//            else
+//                prob = prob / 4;
+//        }
+//        else if (x == x2 && y + 1 == y2) {
+//            if (action == NORTH)
+//                prob = moveProb;
+//            else
+//                prob = prob / 4;
+//        }
+//        else if (x - 1 == x2 && y == y2) {
+//            if (action == WEST)
+//                prob = moveProb;
+//            else
+//                prob = moveProb / 4;
+//        }
+//        else if (x + 1 == x2 && y == y2) {
+//            if (action == EAST)
+//                prob = moveProb;
+//            else
+//                prob = prob / 4;
+//        }
+//        else
+//            prob = 0;
+//
+//        // reward function is reward from moving from [x][y] tp [x2][y2] based off of reward matrix Vs
+//        // the first pass through the do-while loop should essentially map Vs to valIter with the only
+//        // modification being the factoring in of the prob that we will actually end up in that state
+//        // if we had perfect move accuracy, prob would always be 0 or 1. and would only be 1 exactly once for
+//        // each summation. I think there must be a way to cut down this complexity though because as it is
+//        // it's REALLLY slow. Just a thought
+//       sum += prob * (Vs[x2][y2] + penalty * valIter[x2][y2].value);
+//       return sum;
     }
 
-    void ValIter()
+    void valueIteration()
     {
         double penalty = .9;
         double iteration_delta = 0;
         do {
             iteration_delta = 0;
+            ValueItem newValIter[][] = new ValueItem[mundo.width][mundo.height];
             for (int x = 1; x < mundo.grid.length - 1; x++) {
                 for (int y = 1; y < mundo.grid.length - 1; y++) {
-                    //check if i'm in a wall. If so ignore.
-                    if(mundo.grid[x][y] != 1) {
+                    //check if i'm on a blank square.
+                    if(mundo.grid[x][y] == BLANK_SPACE) {
+                        //STAY
+                        double best_value_so_far = computeProbValSum(x, y, penalty, STAY);
+                        int best_direction_so_far = STAY;
                         //NORTH
-                        double curr;
-                        double bestsofar = computeProbValSum(x, y, penalty, STAY);
-                        //SOUTH
-                        curr = computeProbValSum(x, y, penalty, NORTH);
-                        if (bestsofar < curr)
-                            bestsofar = curr;
-                        curr = computeProbValSum(x, y, penalty, SOUTH);
-                        if (bestsofar < curr)
-                            bestsofar = curr;
-                        //EAST
-                        curr = computeProbValSum(x, y, penalty, EAST);
-                        if (bestsofar < curr)
-                            bestsofar = curr;
-                        //WEST
-                        curr = computeProbValSum(x, y, penalty, WEST);
-                        if (bestsofar < curr)
-                            bestsofar = curr;
-                        if (iteration_delta < abs(bestsofar - valIter[x][y])) {
-                            iteration_delta = abs(bestsofar - valIter[x][y]);
+                        double current_sum = computeProbValSum(x, y, penalty, NORTH);
+                        if (best_value_so_far < current_sum)
+                        {
+                            best_value_so_far = current_sum;
+                            best_direction_so_far = NORTH;
                         }
-                        valIter[x][y] = bestsofar;
+                        //SOUTH
+                        current_sum = computeProbValSum(x, y, penalty, SOUTH);
+                        if (best_value_so_far < current_sum)
+                        {
+                            best_value_so_far = current_sum;
+                            best_direction_so_far = SOUTH;
+                        }
+                        //EAST
+                        current_sum = computeProbValSum(x, y, penalty, EAST);
+                        if (best_value_so_far < current_sum)
+                        {
+                            best_value_so_far = current_sum;
+                            best_direction_so_far = EAST;
+                        }
+                        //WEST
+                        current_sum = computeProbValSum(x, y, penalty, WEST);
+                        if (best_value_so_far < current_sum)
+                        {
+                            best_value_so_far = current_sum;
+                            best_direction_so_far = WEST;
+                        }
+                        double current_iteration_delta = abs(valIter[x][y].value - newValIter[x][y].value);
+                        if (iteration_delta < current_iteration_delta) {
+                            iteration_delta = current_iteration_delta;
+                        }
+                        newValIter[x][y].value = best_value_so_far;
+                        newValIter[x][y].direction = best_direction_so_far;
+                    } else if (mundo.grid[x][y] == WIN || mundo.grid[x][y] == LOSE) {
+                        newValIter[x][y].value = Vs[x][y];
+                        newValIter[x][y].direction = STAY;
                     }
                 }
             }
+            valIter = newValIter;
         }while(iteration_delta > .1);
         //create value iteration for the given map
         //for all states
@@ -643,8 +695,18 @@ public class theRobot extends JFrame {
     int moveOptimalKnown()
     {
         //move in direction you're supposed to if your at this spot. Since we aren't really paying attention to walls
-        //I should check if the move I select would head to a wall, and if it does, pick the next highest utility.
-        return STAY;
+        //I should check if the move I select would head to a WALL, and if it does, pick the next highest utility.
+        for(int x=1;x<mundo.width-1;x++)
+        {
+            for (int y=1;y<mundo.height-1;y++)
+            {
+                if(probs[x][y] == 1) {
+                    return valIter[x][y].direction;
+                }
+            }
+        }
+        System.out.println("WE DON'T KNOW THE ROBOT'S POSITION AND WE SHOULD!");
+        return -1;
     }
 
     int moveOptimalUnknown()
@@ -657,9 +719,8 @@ public class theRobot extends JFrame {
     void doStuff() {
         int action;
         
-        //valueIteration();  // TODO: function you will write in Part II of the lab
+        valueIteration();  // TODO: function you will write in Part II of the lab
         initializeProbabilities();  // Initializes the location (probability) map
-        ValIter();
         System.out.println(Arrays.deepToString(valIter));
         while (true) {
             try {

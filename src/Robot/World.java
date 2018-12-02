@@ -12,7 +12,7 @@ import java.text.*;
 
 public class World {
     int width, height;  // the number of grid squares in the x and y directions
-    int[][] grid;       // will store the map of the world.  0: empty square; 1: wall; 2: stairwell; 3: goal
+    int[][] grid;       // will store the map of the world.  0: empty square; 1: WALL; 2: stairwell; 3: goal
 
     World(String worldFile) {
         try {
