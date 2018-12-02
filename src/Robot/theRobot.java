@@ -8,10 +8,7 @@ import java.lang.*;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import java.io.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-import java.util.Scanner;
+import java.util.*;
 import java.net.*;
 
 import static java.lang.Math.abs;
@@ -274,8 +271,11 @@ public class theRobot extends JFrame {
     // store your probability map (for position of the robot in this array
     double[][] probs;
     
-    // store your computed value of being in each state (x, y)
+    // store your reward of being in each state (x, y)
     double[][] Vs;
+
+    //store val iteration of being in each state
+    double[][] valIter;
     
     public theRobot(String _manual, int _decisionDelay) {
         // initialize variables as specified from the command-line
@@ -399,7 +399,9 @@ public class theRobot extends JFrame {
     void initializeProbabilities() {
         probs = new double[mundo.width][mundo.height];
         Vs = new double[mundo.width][mundo.height];
+        valIter = new double[mundo.width][mundo.height];
         // if the robot's initial position is known, reflect that in the probability map
+        initialize_values();
         if (knownPosition) {
             for (int y = 0; y < mundo.height; y++) {
                 for (int x = 0; x < mundo.width; x++) {
@@ -523,7 +525,6 @@ public class theRobot extends JFrame {
     // You do NOT need to write this function for this lab; it can remain as is
     int automaticAction() {
 
-        ValIter(); //sets up value map for positions
         if(knownPosition)
         {
             return moveOptimalKnown(); //just follows value map since I know where I am.
@@ -537,47 +538,96 @@ public class theRobot extends JFrame {
 
     double computeProbValSum(int x, int y, double penalty, int action)
     {
-        //compute e
-        double E = 1; //E is initial value;
         double sum = 0;
-        for(int x2 = 0; x2 < mundo.grid.length-1; x2++)
+        for(int x2 = 1; x2 < mundo.grid.length-1; x2++)
         {
-            for(int y2 = 0; y2 < mundo.grid.length-1; y2++)
+            for(int y2 = 1; y2 < mundo.grid.length-1; y2++)
             {
-                //zero with P(s'|s,a)
-                sum = 0*Vs[x2][y2];
+                //check if i'm in a wall, if so ignore
+                if( mundo.grid[x2][y2] != 1) {
+                    //these if statements calcuate P(s'|s,a) similarly to the last lab. I need to double check if the
+                    //directions are correct though...
+                    double prob = 1 - moveProb;
+                    if (x == x2 && y == y2) {
+                        if (action == STAY)
+                            prob = moveProb;
+                        else
+                            prob = moveProb;
+                    }
+                    else if (x == x2 && y - 1 == y2) {
+                        if (action == SOUTH)
+                            prob = moveProb;
+                        else
+                            prob = prob / 4;
+                    }
+                    else if (x == x2 && y + 1 == y2) {
+                        if (action == NORTH)
+                            prob = moveProb;
+                        else
+                            prob = prob / 4;
+                    }
+                    else if (x - 1 == x2 && y == y2) {
+                        if (action == WEST)
+                            prob = moveProb;
+                        else
+                            prob = moveProb / 4;
+                    }
+                    else if (x + 1 == x2 && y == y2) {
+                        if (action == EAST)
+                            prob = moveProb;
+                        else
+                            prob = prob / 4;
+                    }
+                    else
+                        prob = 0;
+
+                    // reward function is reward from moving from [x][y] tp [x2][y2] based off of reward matrix Vs
+                    // the first pass through the do-while loop should essentially map Vs to valIter with the only
+                    // modification being the factoring in of the prob that we will actually end up in that state
+                    // if we had perfect move accuracy, prob would always be 0 or 1. and would only be 1 exactly once for
+                    // each summation. I think there must be a way to cut down this complexity though because as it is
+                    // it's REALLLY slow. Just a thought
+                   sum += prob * (Vs[x2][y2] + penalty * valIter[x2][y2]);
+                }
             }
         }
 
-        return E + penalty*sum;
+        return sum;
     }
 
     void ValIter()
     {
-        double penalty = .1;
+        double penalty = .9;
         double iteration_delta = 0;
         do {
+            iteration_delta = 0;
             for (int x = 1; x < mundo.grid.length - 1; x++) {
                 for (int y = 1; y < mundo.grid.length - 1; y++) {
-                    //NORTH
-                    double curr;
-                    double bestsofar = computeProbValSum(x, y, penalty, NORTH);
-                    //SOUTH
-                    curr = computeProbValSum(x, y, penalty, SOUTH);
-                    if (bestsofar < curr)
-                        bestsofar = curr;
-                    //EAST
-                    curr = computeProbValSum(x, y, penalty, EAST);
-                    if (bestsofar < curr)
-                        bestsofar = curr;
-                    //WEST
-                    curr = computeProbValSum(x, y, penalty, WEST);
-                    if (bestsofar < curr)
-                        bestsofar = curr;
-                    if (iteration_delta < abs(bestsofar = Vs[x][y])) {
-                        iteration_delta = abs(bestsofar = Vs[x][y]);
+                    //check if i'm in a wall. If so ignore.
+                    if(mundo.grid[x][y] != 1) {
+                        //NORTH
+                        double curr;
+                        double bestsofar = computeProbValSum(x, y, penalty, STAY);
+                        //SOUTH
+                        curr = computeProbValSum(x, y, penalty, NORTH);
+                        if (bestsofar < curr)
+                            bestsofar = curr;
+                        curr = computeProbValSum(x, y, penalty, SOUTH);
+                        if (bestsofar < curr)
+                            bestsofar = curr;
+                        //EAST
+                        curr = computeProbValSum(x, y, penalty, EAST);
+                        if (bestsofar < curr)
+                            bestsofar = curr;
+                        //WEST
+                        curr = computeProbValSum(x, y, penalty, WEST);
+                        if (bestsofar < curr)
+                            bestsofar = curr;
+                        if (iteration_delta < abs(bestsofar - valIter[x][y])) {
+                            iteration_delta = abs(bestsofar - valIter[x][y]);
+                        }
+                        valIter[x][y] = bestsofar;
                     }
-                    Vs[x][y] = bestsofar;
                 }
             }
         }while(iteration_delta > .1);
@@ -592,14 +642,15 @@ public class theRobot extends JFrame {
 
     int moveOptimalKnown()
     {
-        //move in direction you're supposed to if your at this spot
+        //move in direction you're supposed to if your at this spot. Since we aren't really paying attention to walls
+        //I should check if the move I select would head to a wall, and if it does, pick the next highest utility.
         return STAY;
     }
 
     int moveOptimalUnknown()
     {
         //V(a) = SUM_xt(Bel(x_t) * Q(x_t, a))
-        //maximize V(a)
+        //maximize V(a)s
         return STAY;
     }
 
@@ -608,7 +659,8 @@ public class theRobot extends JFrame {
         
         //valueIteration();  // TODO: function you will write in Part II of the lab
         initializeProbabilities();  // Initializes the location (probability) map
-        
+        ValIter();
+        System.out.println(Arrays.deepToString(valIter));
         while (true) {
             try {
                 if (isManual)
