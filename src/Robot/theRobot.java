@@ -243,13 +243,18 @@ public class theRobot extends JFrame {
     class ValueItem {
         int direction;
         double value;
+        boolean wall;
+
         public ValueItem(int direction, double value) {
             this.direction = direction;
             this.value = value;
+            this.wall = false;
         }
+
         public ValueItem() {
             this.direction = NORTH;
             this.value = 0.0;
+            this.wall = false;
         }
     }
 
@@ -265,35 +270,35 @@ public class theRobot extends JFrame {
     public static final int LOSE = 2;
     public static final int WIN = 3;
 
-    Color bkgroundColor = new Color(230,230,230);
-    
+    Color bkgroundColor = new Color(230, 230, 230);
+
     static mySmartMap myMaps; // instance of the class that draw everything to the GUI
     String mundoName;
-    
+
     World mundo; // mundo contains all the information about the world.  See World.java
     double moveProb, sensorAccuracy;  // stores probabilies that the robot moves in the intended direction
-                                      // and the probability that a sonar reading is correct, respectively
-    
+    // and the probability that a sonar reading is correct, respectively
+
     // variables to communicate with the Server via sockets
     public Socket s;
-	public BufferedReader sin;
-	public PrintWriter sout;
-    
+    public BufferedReader sin;
+    public PrintWriter sout;
+
     // variables to store information entered through the command-line about the current scenario
     boolean isManual = false; // determines whether you (manual) or the AI (automatic) controls the robots movements
     boolean knownPosition = false;
     int startX = -1, startY = -1;
     int decisionDelay = 250;
-    
+
     // store your probability map (for position of the robot in this array
     double[][] probs;
-    
+
     // store your reward of being in each state (x, y)
     double[][] Vs;
 
     //store val iteration of being in each state
     ValueItem[][] valIter;
-    
+
     public theRobot(String _manual, int _decisionDelay) {
         // initialize variables as specified from the command-line
         if (_manual.equals("automatic"))
@@ -301,30 +306,30 @@ public class theRobot extends JFrame {
         else
             isManual = true;
         decisionDelay = _decisionDelay;
-        
+
         // get a connection to the server and get initial information about the world
         initClient();
-    
+
         // Read in the world
         mundo = new World(mundoName);
-        
+
         // set up the GUI that displays the information you compute
         int width = 500;
         int height = 500;
         int bar = 20;
-        setSize(width,height+bar);
+        setSize(width, height + bar);
         getContentPane().setBackground(bkgroundColor);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setBounds(0, 0, width, height+bar);
+        setBounds(0, 0, width, height + bar);
         myMaps = new mySmartMap(width, height, mundo);
         getContentPane().add(myMaps);
-        
+
         setVisible(true);
         setTitle("Probability and Value Maps");
-        
+
         doStuff(); // Function to have the robot move about its world until it gets to its goal or falls in a stairwell
     }
-    
+
     // this function establishes a connection with the server and learns
     //   1 -- which world it is in
     //   2 -- it's transition model (specified by moveProb)
@@ -333,19 +338,19 @@ public class theRobot extends JFrame {
     public void initClient() {
         int portNumber = 3333;
         String host = "localhost";
-        
+
         try {
-			s = new Socket(host, portNumber);
+            s = new Socket(host, portNumber);
             sout = new PrintWriter(s.getOutputStream(), true);
-			sin = new BufferedReader(new InputStreamReader(s.getInputStream()));
-            
+            sin = new BufferedReader(new InputStreamReader(s.getInputStream()));
+
             mundoName = sin.readLine();
             moveProb = Double.parseDouble(sin.readLine());
             sensorAccuracy = Double.parseDouble(sin.readLine());
             System.out.println("Need to open the mundo: " + mundoName);
             System.out.println("moveProb: " + moveProb);
             System.out.println("sensorAccuracy: " + sensorAccuracy);
-            
+
             // find out of the robots position is know
             String _known = sin.readLine();
             if (_known.equals("known")) {
@@ -353,8 +358,7 @@ public class theRobot extends JFrame {
                 startX = Integer.parseInt(sin.readLine());
                 startY = Integer.parseInt(sin.readLine());
                 System.out.println("Robot's initial position is known: " + startX + ", " + startY);
-            }
-            else {
+            } else {
                 System.out.println("Robot's initial position is unknown");
             }
         } catch (IOException e) {
@@ -373,26 +377,23 @@ public class theRobot extends JFrame {
         while (myMaps.currentKey < 0) {
             try {
                 Thread.sleep(50);
-            }
-            catch(InterruptedException ex) {
+            } catch (InterruptedException ex) {
                 Thread.currentThread().interrupt();
             }
         }
         int a = myMaps.currentKey;
         myMaps.currentKey = -1;
-        
+
         System.out.println("Action: " + a);
-        
+
         return a;
     }
 
     void initialize_values() {
-        for(int x = 0; x < mundo.width; x++)
-        {
-            for(int y = 0; y < mundo.height; y++)
-            {
-                switch(mundo.grid[x][y])
-                {
+        for (int x = 0; x < mundo.width; x++) {
+            for (int y = 0; y < mundo.height; y++) {
+                valIter[x][y] = new ValueItem();
+                switch (mundo.grid[x][y]) {
                     case BLANK_SPACE:
                     case WALL:
                         Vs[x][y] = 0;
@@ -424,17 +425,16 @@ public class theRobot extends JFrame {
                         probs[x][y] = 0.0;
                 }
             }
-        }
-        else {  // otherwise, set up a uniform prior over all the positions in the world that are open spaces
+        } else {  // otherwise, set up a uniform prior over all the positions in the world that are open spaces
             int count = 0;
-            
+
             for (int y = 0; y < mundo.height; y++) {
                 for (int x = 0; x < mundo.width; x++) {
                     if (mundo.grid[x][y] == 0)
                         count++;
                 }
             }
-            
+
             for (int y = 0; y < mundo.height; y++) {
                 for (int x = 0; x < mundo.width; x++) {
                     if (mundo.grid[x][y] == 0)
@@ -444,12 +444,11 @@ public class theRobot extends JFrame {
                 }
             }
         }
-        
+
         myMaps.updateProbs(probs);
     }
 
-    double[][] Discrete_Bayes_Filter(double[][] previous_belief, int action, String reading)
-    {
+    double[][] Discrete_Bayes_Filter(double[][] previous_belief, int action, String reading) {
 //        for all xt in Xt do
 //        Bel’(xt) = Σxt-1 p(xt | at, xt-1) Bel(xt-1)
 //        Bel(xt) = η p(zt | xt) Bel’(xt)
@@ -457,47 +456,37 @@ public class theRobot extends JFrame {
 //        return Bel(Xt)
         double[][] new_belief = new double[previous_belief.length][previous_belief[0].length];
         double normalizing_factor = 0;
-        for(int x=1;x<previous_belief.length-1;x++)
-        {
-            for(int y=1;y<previous_belief[x].length-1; y++)
-            {
+        for (int x = 1; x < previous_belief.length - 1; x++) {
+            for (int y = 1; y < previous_belief[x].length - 1; y++) {
                 double belief_bar = 0.0;
-                if(mundo.grid[x][y] == 0)
-                {
-                    belief_bar += previous_belief[x][y]*(action == STAY ? moveProb: (1-moveProb)/4);//*p(state| action, previous_state
-                    if(mundo.grid[x+1][y] == 0)
-                    {
-                        belief_bar += previous_belief[x+1][y]*(action == WEST ? moveProb: (1-moveProb)/4);
+                if (mundo.grid[x][y] == 0) {
+                    belief_bar += previous_belief[x][y] * (action == STAY ? moveProb : (1 - moveProb) / 4);//*p(state| action, previous_state
+                    if (mundo.grid[x + 1][y] == 0) {
+                        belief_bar += previous_belief[x + 1][y] * (action == WEST ? moveProb : (1 - moveProb) / 4);
                     }
-                    if(mundo.grid[x-1][y] == 0)
-                    {
-                        belief_bar += previous_belief[x-1][y]*(action == EAST ? moveProb: (1-moveProb)/4);
+                    if (mundo.grid[x - 1][y] == 0) {
+                        belief_bar += previous_belief[x - 1][y] * (action == EAST ? moveProb : (1 - moveProb) / 4);
                     }
-                    if(mundo.grid[x][y+1] == 0)
-                    {
-                        belief_bar += previous_belief[x][y+1]*(action == NORTH ? moveProb: (1-moveProb)/4);
+                    if (mundo.grid[x][y + 1] == 0) {
+                        belief_bar += previous_belief[x][y + 1] * (action == NORTH ? moveProb : (1 - moveProb) / 4);
                     }
-                    if(mundo.grid[x][y-1] == 0)
-                    {
-                        belief_bar += previous_belief[x][y-1]*(action == SOUTH ? moveProb: (1-moveProb)/4);
+                    if (mundo.grid[x][y - 1] == 0) {
+                        belief_bar += previous_belief[x][y - 1] * (action == SOUTH ? moveProb : (1 - moveProb) / 4);
                     }
                 }
-
-                double accuracy = (mundo.grid[x][y-1] == Character.getNumericValue(reading.charAt(0)) ? sensorAccuracy : (1-sensorAccuracy)) *
-                        (mundo.grid[x][y+1] == Character.getNumericValue(reading.charAt(1)) ? sensorAccuracy : (1 - sensorAccuracy)) *
-                        (mundo.grid[x+1][y] == Character.getNumericValue(reading.charAt(2)) ? sensorAccuracy : (1 - sensorAccuracy)) *
-                        (mundo.grid[x-1][y] == Character.getNumericValue(reading.charAt(3)) ? sensorAccuracy : (1 - sensorAccuracy));
-                new_belief[x][y] = belief_bar*accuracy;
+                double accuracy = (mundo.grid[x][y - 1] == Character.getNumericValue(reading.charAt(0)) ? sensorAccuracy : (1 - sensorAccuracy)) *
+                        (mundo.grid[x][y + 1] == Character.getNumericValue(reading.charAt(1)) ? sensorAccuracy : (1 - sensorAccuracy)) *
+                        (mundo.grid[x + 1][y] == Character.getNumericValue(reading.charAt(2)) ? sensorAccuracy : (1 - sensorAccuracy)) *
+                        (mundo.grid[x - 1][y] == Character.getNumericValue(reading.charAt(3)) ? sensorAccuracy : (1 - sensorAccuracy));
+                new_belief[x][y] = belief_bar * accuracy;
                 normalizing_factor += new_belief[x][y];
             }
         }
 
-        for(int x=0;x<previous_belief.length;x++)
-        {
-            for(int y=0;y<previous_belief[x].length; y++)
-            {
+        for (int x = 0; x < previous_belief.length; x++) {
+            for (int y = 0; y < previous_belief[x].length; y++) {
 
-                new_belief[x][y] = new_belief[x][y]/normalizing_factor;
+                new_belief[x][y] = new_belief[x][y] / normalizing_factor;
             }
         }
         return new_belief;
@@ -505,12 +494,11 @@ public class theRobot extends JFrame {
     }
 
 
-    boolean is_expected(int x, int y, String sonar)
-    {
-        return  mundo.grid[x][y-1] == Character.getNumericValue(sonar.charAt(0)) &&
-                mundo.grid[x][y+1] == Character.getNumericValue(sonar.charAt(1)) &&
-                mundo.grid[x+1][y] == Character.getNumericValue(sonar.charAt(2)) &&
-                mundo.grid[x-1][y] == Character.getNumericValue(sonar.charAt(3));
+    boolean is_expected(int x, int y, String sonar) {
+        return mundo.grid[x][y - 1] == Character.getNumericValue(sonar.charAt(0)) &&
+                mundo.grid[x][y + 1] == Character.getNumericValue(sonar.charAt(1)) &&
+                mundo.grid[x + 1][y] == Character.getNumericValue(sonar.charAt(2)) &&
+                mundo.grid[x - 1][y] == Character.getNumericValue(sonar.charAt(3));
     }
 
     // TODO: update the probabilities of where the AI thinks it is based on the action selected and the new sonar readings
@@ -521,168 +509,120 @@ public class theRobot extends JFrame {
         // your code
         double[][] temp = Discrete_Bayes_Filter(probs, action, sonars);
         double total = 0.0;
-        for(int x=1;x<temp.length;x++)
-        {
-            for(int y=1;y<temp[x].length; y++) {
+        for (int x = 1; x < temp.length; x++) {
+            for (int y = 1; y < temp[x].length; y++) {
                 probs[x][y] = temp[x][y];
             }
         }
         System.out.println(total);
         myMaps.updateProbs(probs); // call this function after updating your probabilities so that the
-                                   //  new probabilities will show up in the probability map on the GUI
+        //  new probabilities will show up in the probability map on the GUI
     }
-
 
 
     // This is the function you'd need to write to make the robot move using your AI;
     // You do NOT need to write this function for this lab; it can remain as is
     int automaticAction() {
 
-        if(knownPosition)
-        {
+        if (knownPosition) {
             return moveOptimalKnown(); //just follows value map since I know where I am.
-        }
-        else
-        {
+        } else {
             return moveOptimalUnknown(); //calcuates utility for each move according to my belief in my position and
-                                            //the value map, returning the highest.
+            //the value map, returning the highest.
         }
     }
 
-    double computeProbValSum(int x, int y, double penalty, int action)
-    {
+    double computeProbValSum(int x, int y, double penalty, int action) {
         //CURERNTLY, THIS DOESN'T ACCOUNT FOR WALLS.
         double probability_sum_total = 0.0;
-        double move_wrong_probability = (1 - moveProb)/4;
-        if(action == STAY) {
+        double move_wrong_probability = (1 - moveProb) / 4;
+        if (action == STAY) {
             probability_sum_total += (moveProb * valIter[x][y].value);
         } else {
             probability_sum_total += (move_wrong_probability * valIter[x][y].value);
         }
-        if(action == NORTH) {
-            probability_sum_total += (moveProb * valIter[x][y-1].value);
+        if (action == NORTH) {
+            probability_sum_total += (moveProb * valIter[x][y - 1].value);
         } else {
-            probability_sum_total += (move_wrong_probability * valIter[x][y-1].value);
+            probability_sum_total += (move_wrong_probability * valIter[x][y - 1].value);
         }
-        if(action == EAST) {
-            probability_sum_total += (moveProb * valIter[x+1][y].value);
+        if (action == EAST) {
+            probability_sum_total += (moveProb * valIter[x + 1][y].value);
         } else {
-            probability_sum_total += (move_wrong_probability * valIter[x+1][y].value);
+            probability_sum_total += (move_wrong_probability * valIter[x + 1][y].value);
         }
-        if(action == SOUTH) {
-            probability_sum_total += (moveProb * valIter[x][y+1].value);
+        if (action == SOUTH) {
+            probability_sum_total += (moveProb * valIter[x][y + 1].value);
         } else {
-            probability_sum_total += (move_wrong_probability * valIter[x][y+1].value);
+            probability_sum_total += (move_wrong_probability * valIter[x][y + 1].value);
         }
-        if(action == WEST) {
-            probability_sum_total += (moveProb * valIter[x-1][y].value);
+        if (action == WEST) {
+            probability_sum_total += (moveProb * valIter[x - 1][y].value);
         } else {
-            probability_sum_total += (move_wrong_probability * valIter[x-1][y].value);
+            probability_sum_total += (move_wrong_probability * valIter[x - 1][y].value);
         }
         return Vs[x][y] + (penalty * probability_sum_total);
-//        double sum = 0;
-//        //these if statements calcuate P(s'|s,a) similarly to the last lab. I need to double check if the
-//        //directions are correct though...
-//        double prob = 1 - moveProb;
-//        if (x == x2 && y == y2) {
-//            if (action == STAY)
-//                prob = moveProb;
-//            else
-//                prob = moveProb;
-//        }
-//        else if (x == x2 && y - 1 == y2) {
-//            if (action == SOUTH)
-//                prob = moveProb;
-//            else
-//                prob = prob / 4;
-//        }
-//        else if (x == x2 && y + 1 == y2) {
-//            if (action == NORTH)
-//                prob = moveProb;
-//            else
-//                prob = prob / 4;
-//        }
-//        else if (x - 1 == x2 && y == y2) {
-//            if (action == WEST)
-//                prob = moveProb;
-//            else
-//                prob = moveProb / 4;
-//        }
-//        else if (x + 1 == x2 && y == y2) {
-//            if (action == EAST)
-//                prob = moveProb;
-//            else
-//                prob = prob / 4;
-//        }
-//        else
-//            prob = 0;
-//
-//        // reward function is reward from moving from [x][y] tp [x2][y2] based off of reward matrix Vs
-//        // the first pass through the do-while loop should essentially map Vs to valIter with the only
-//        // modification being the factoring in of the prob that we will actually end up in that state
-//        // if we had perfect move accuracy, prob would always be 0 or 1. and would only be 1 exactly once for
-//        // each summation. I think there must be a way to cut down this complexity though because as it is
-//        // it's REALLLY slow. Just a thought
-//       sum += prob * (Vs[x2][y2] + penalty * valIter[x2][y2].value);
-//       return sum;
     }
 
-    void valueIteration()
-    {
+    void valueIteration() {
         double penalty = .9;
-        double iteration_delta = 0;
+        double iteration_delta;
+        boolean first_pass = true;
         do {
             iteration_delta = 0;
             ValueItem newValIter[][] = new ValueItem[mundo.width][mundo.height];
-            for (int x = 1; x < mundo.grid.length - 1; x++) {
-                for (int y = 1; y < mundo.grid.length - 1; y++) {
+            for (int x = 0; x < mundo.grid.length; x++) {
+                for (int y = 0; y < mundo.grid.length; y++) {
+                    newValIter[x][y] = new ValueItem();
                     //check if i'm on a blank square.
-                    if(mundo.grid[x][y] == BLANK_SPACE) {
+                    if (mundo.grid[x][y] == BLANK_SPACE) {
                         //STAY
-                        double best_value_so_far = computeProbValSum(x, y, penalty, STAY);
-                        int best_direction_so_far = STAY;
+                        double best_value_so_far = computeProbValSum(x, y, penalty, NORTH);
+                        int best_direction_so_far = NORTH;
                         //NORTH
-                        double current_sum = computeProbValSum(x, y, penalty, NORTH);
-                        if (best_value_so_far < current_sum)
-                        {
-                            best_value_so_far = current_sum;
-                            best_direction_so_far = NORTH;
-                        }
-                        //SOUTH
-                        current_sum = computeProbValSum(x, y, penalty, SOUTH);
-                        if (best_value_so_far < current_sum)
-                        {
+                        double current_sum = computeProbValSum(x, y, penalty, SOUTH);
+
+                        if (best_value_so_far < current_sum) {
+                            //check if moving south will go to wall if so skip two lines
                             best_value_so_far = current_sum;
                             best_direction_so_far = SOUTH;
                         }
                         //EAST
                         current_sum = computeProbValSum(x, y, penalty, EAST);
-                        if (best_value_so_far < current_sum)
-                        {
+                        if (best_value_so_far < current_sum) {
+                            //check if moving east will go to wall if so skip two lines
                             best_value_so_far = current_sum;
                             best_direction_so_far = EAST;
                         }
                         //WEST
                         current_sum = computeProbValSum(x, y, penalty, WEST);
-                        if (best_value_so_far < current_sum)
-                        {
+                        if (best_value_so_far < current_sum) {
+                            //check if moving west will go to wall if so skip two lines
                             best_value_so_far = current_sum;
                             best_direction_so_far = WEST;
                         }
+                        newValIter[x][y].value = best_value_so_far;
+                        newValIter[x][y].direction = best_direction_so_far;
                         double current_iteration_delta = abs(valIter[x][y].value - newValIter[x][y].value);
                         if (iteration_delta < current_iteration_delta) {
                             iteration_delta = current_iteration_delta;
                         }
-                        newValIter[x][y].value = best_value_so_far;
-                        newValIter[x][y].direction = best_direction_so_far;
                     } else if (mundo.grid[x][y] == WIN || mundo.grid[x][y] == LOSE) {
                         newValIter[x][y].value = Vs[x][y];
                         newValIter[x][y].direction = STAY;
+                    } else {
+                        newValIter[x][y].value = Vs[x][y];
+                        newValIter[x][y].direction = STAY;
+                        newValIter[x][y].wall = true;
                     }
                 }
             }
             valIter = newValIter;
-        }while(iteration_delta > .1);
+            if (first_pass) {
+                iteration_delta = 1;
+                first_pass = false;
+            }
+        } while (iteration_delta > .1);
         //create value iteration for the given map
         //for all states
         //  U_t+1(s) = R(s)+ ()[max_a=A(s)sum of s' in S{P(s'|s,a)U_t(s')}]
@@ -692,15 +632,12 @@ public class theRobot extends JFrame {
 
     }
 
-    int moveOptimalKnown()
-    {
+    int moveOptimalKnown() {
         //move in direction you're supposed to if your at this spot. Since we aren't really paying attention to walls
         //I should check if the move I select would head to a WALL, and if it does, pick the next highest utility.
-        for(int x=1;x<mundo.width-1;x++)
-        {
-            for (int y=1;y<mundo.height-1;y++)
-            {
-                if(probs[x][y] == 1) {
+        for (int x = 1; x < mundo.width - 1; x++) {
+            for (int y = 1; y < mundo.height - 1; y++) {
+                if (probs[x][y] == 1) {
                     return valIter[x][y].direction;
                 }
             }
@@ -709,18 +646,113 @@ public class theRobot extends JFrame {
         return -1;
     }
 
-    int moveOptimalUnknown()
-    {
-        //V(a) = SUM_xt(Bel(x_t) * Q(x_t, a))
-        //maximize V(a)s
-        return STAY;
+    //returns utility from performing action in posisiton x and y. I think I have my x+-1 and y+-1's messed up. NOT WORKING
+    double util_from_action(int x, int y, int action) {
+        if (action == NORTH)
+            return valIter[x][y-1].value;
+        else if (action == SOUTH)
+            return valIter[x][y+1].value;
+        else if (action == EAST)
+            return valIter[x-1][y].value;
+        else
+            return valIter[x+1][y].value;
+    }
+
+    int moveOptimalUnknown() {
+       // ValueItem best_so_far = null;
+        double best_probabiltiy_so_far = 0;
+        
+        //TRIES TO DO: V(a) = Sum of all states BEL(s)* Q(s,a) <- expected util from making action a in state s
+        //maximizes V(a) for all actions a. NOT WORKING RIGHT NOW. 
+//        double best_util_so_far = 0;
+//        int policy = STAY;
+//        for (int action = 0; action < 4; action++) {
+//            int expected_util = 0;
+//            for (int x = 1; x < mundo.width - 1; x++) {
+//                for (int y = 1; y < mundo.height - 1; y++) {
+//                    expected_util += probs[x][y] * util_from_action(x, y, action);
+//                }
+//            }
+//            if (expected_util > best_util_so_far) {
+//                policy = action;
+//            }
+//        }
+//        return policy;
+        
+        //THIS JUST RETURNS THE BEST ACTION FOR THE HIGHEST PROBABILITY POSITION
+//        for (int x = 1; x < mundo.width - 1; x++) {
+//            for (int y = 1; y < mundo.height - 1; y++) {
+//                if (best_so_far == null)
+//                {
+//                    best_so_far = valIter[x][y];
+//                    best_probabiltiy_so_far = probs[x][y];
+//                }
+//                else
+//                {
+//                    if (probs[x][y] > best_probabiltiy_so_far)
+//                    {
+//                        best_probabiltiy_so_far = probs[x][y];
+//                        best_so_far = valIter[x][y];
+//                    }
+//                }
+//            }
+//        }
+//        if(best_probabiltiy_so_far > .2)
+//            return best_so_far.direction;
+//        else
+//            return STAY;
+
+        //CURRENT BEST RETURN, Adds of the probs of each state that says north/south/east/west is their best action and
+        //chooses the one with the highest.
+        double north_util = 0;
+        double south_util = 0;
+        double east_util = 0;
+        double west_util = 0;
+        for (int x = 1; x < mundo.width - 1; x++) {
+            for (int y = 1; y < mundo.height - 1; y++) {
+                switch(valIter[x][y].direction)
+                {
+                    case NORTH:
+                        north_util += probs[x][y];
+                        break;
+                    case SOUTH:
+                        south_util += probs[x][y];
+                        break;
+                    case EAST:
+                        east_util += probs[x][y];
+                        break;
+                    case WEST:
+                        west_util += probs[x][y];
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+        best_probabiltiy_so_far = north_util;
+        int best_action = NORTH;
+        if(south_util > best_probabiltiy_so_far)
+        {
+            best_probabiltiy_so_far = south_util;
+            best_action = SOUTH;
+        }
+        if(east_util > best_probabiltiy_so_far)
+        {
+            best_probabiltiy_so_far = east_util;
+            best_action = EAST;
+        }
+        if(west_util > best_probabiltiy_so_far)
+        {
+            best_action = WEST;
+        }
+        return best_action;
     }
 
     void doStuff() {
         int action;
-        
-        valueIteration();  // TODO: function you will write in Part II of the lab
+
         initializeProbabilities();  // Initializes the location (probability) map
+        valueIteration();  // TODO: function you will write in Part II of the lab
         System.out.println(Arrays.deepToString(valIter));
         while (true) {
             try {
